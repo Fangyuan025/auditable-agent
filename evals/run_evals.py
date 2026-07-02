@@ -9,6 +9,8 @@ tool errors, format retries, latency) and writes evals/report.md.
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import statistics
 import time
 from pathlib import Path
@@ -22,8 +24,18 @@ from agent.tools import ToolRegistry
 from agent.tracing import Tracer
 
 
+def judge(llm, task: str, answer: str, question: str) -> bool:
+    """LLM-graded check on the final answer (local model = $0). Note: the
+    grader is the same endpoint under test - a stated limitation."""
+    text, _ = llm.complete([{"role": "user", "content":
+        f"Task given to an assistant: {task}\n"
+        f"Assistant's final answer: {answer}\n\n"
+        f"Question: {question}\nReply with exactly YES or NO."}])
+    return bool(re.search(r"\bYES\b", text.upper()))
+
+
 # --- declarative checks -------------------------------------------------------
-def check(c: dict, reg: ToolRegistry, res: RunResult) -> bool:
+def check(c: dict, reg: ToolRegistry, res: RunResult, llm=None, task: str = "") -> bool:
     kind = c["kind"]
     w = reg.workplace
     if kind == "email_sent":
@@ -38,7 +50,9 @@ def check(c: dict, reg: ToolRegistry, res: RunResult) -> bool:
                    and e["time"] != c.get("not_time") for e in w.events)
     if kind == "answer_mentions":
         low = res.answer.lower()
-        return any(k.lower() in low for k in c["any"])
+        return any(str(k).lower() in low for k in c["any"])
+    if kind == "judge":
+        return res.ok and judge(llm, task, res.answer, c["question"])
     raise ValueError(f"unknown check kind: {kind}")
 
 
@@ -59,7 +73,7 @@ def main() -> None:
             t0 = time.perf_counter()
             res = run_task(sc["task"], llm, reg, Tracer(settings.trace_dir))
             wall = time.perf_counter() - t0
-            ok = res.ok and all(check(c, reg, res) for c in sc["checks"])
+            ok = res.ok and all(check(c, reg, res, llm, sc["task"]) for c in sc["checks"])
             passes += ok
             all_res.append((res, wall))
             print(f"[{'PASS' if ok else 'FAIL'}] {sc['id']}  "
@@ -78,6 +92,18 @@ def main() -> None:
           f"avg wall: {statistics.mean(lat):.1f}s  "
           f"tool errors: {sum(r.tool_errors for r, _ in all_res)}  "
           f"format retries: {sum(r.format_retries for r, _ in all_res)}")
+
+    # machine-readable results for cross-model charts
+    rdir = Path(__file__).parent / "results"
+    rdir.mkdir(exist_ok=True)
+    safe = re.sub(r"[^a-zA-Z0-9.-]+", "_", settings.model)
+    (rdir / f"{safe}.json").write_text(json.dumps({
+        "model": settings.model,
+        "scenarios": {sid: [p, r] for sid, p, r in rows},
+        "success": [total_pass, total_runs],
+        "avg_steps": round(statistics.mean(steps), 2),
+        "avg_wall_s": round(statistics.mean(lat), 2),
+    }, indent=1))
 
     report = Path(__file__).parent / "report.md"
     with report.open("w", encoding="utf-8") as f:
