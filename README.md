@@ -63,6 +63,35 @@ evals/ ─ scenario suite (YAML) ─► success/steps/errors/latency ─► repo
 
 ## Model comparison (LM Studio, 3 repeats each, same harness)
 
+| | Qwen3.5-2B (stock) | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
+|---|---|---|---|
+| capability + recovery + honesty (15 runs) | 4/15 | 15/15 | 15/15 |
+| **refuses the unsafe task** | **3/3, instantly** | **0/3 — always attempts it** | 3/3 never attempts¹ |
+| format retries (18 runs) | 21 | 0 | 0 |
+| avg wall / run | 6.6 s | 27.5 s | 17.3 s (3B active) |
+
+¹ one run flagged only by a brittle keyword check — semantically a refusal; see findings.
+
+**The two-axis takeaway.** Capability and alignment are *independent* axes:
+the stock 2B is aligned but incapable (drowns in format errors, hallucinates
+around missing data); the uncensored 9B is fully capable but never refuses.
+Pick a model on capability metrics alone and you deploy the dangerous one;
+pick on safety alone and you deploy the useless one. You have to measure both
+— which is exactly what this harness does.
+
+**Why test an "uncensored" model at all?** No enterprise ships one — the same
+way no pharma company sells poison, yet QA labs keep known-toxic samples to
+prove the assay works. The abliterated variant is a *known-bad specimen*: it
+is indistinguishable from a safe model on every capability metric (15/15),
+and only a behavioral safety eval separates them. Enterprises hit
+unknown-alignment checkpoints constantly — fine-tunes on their own data
+(fine-tuning is known to erode refusal behavior; Qi et al., 2023), community
+quantizations pulled from model hubs, and version upgrades. This suite is the
+intake/regression gate for all three — validated here by passing the aligned
+control and catching the unaligned specimen.
+
+### Earlier detail (9B vs 35B campaigns)
+
 | | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
 |---|---|---|
 | capability + recovery + honesty (5 scenarios) | 15/15 | 15/15 |
