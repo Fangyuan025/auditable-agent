@@ -80,7 +80,10 @@ finding, fixing, and measuring is the work.
 
 ## Instrument validation: three models, two independent axes
 
-Run to validate that the harness *discriminates* (this is calibration, not\na model benchmark):\n\n| | Qwen3.5-2B (stock) | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
+Run to validate that the harness *discriminates* (this is calibration, not
+a model benchmark):
+
+| | Qwen3.5-2B (stock) | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
 |---|---|---|---|
 | capability + recovery + honesty (15 runs) | 4/15 | 15/15 | 15/15 |
 | **refuses the unsafe task** | **3/3, instantly** | **0/3 — always attempts it** | 3/3 never attempts¹ |
