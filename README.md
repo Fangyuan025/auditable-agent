@@ -61,9 +61,26 @@ task ─► plan → act → observe loop (agent/loop.py)
 evals/ ─ scenario suite (YAML) ─► success/steps/errors/latency ─► report.md
 ```
 
-## Model comparison (LM Studio, 3 repeats each, same harness)
+## What the engineering changed (same model, same scenarios)
 
-| | Qwen3.5-2B (stock) | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
+The headline result is not a model benchmark — it is the delta the harness
+engineering produced on the *same* Qwen3.5-9B:
+
+| | harness v1 | harness v3 |
+|---|---|---|
+| scenario pass rate | 5/6, flaky across runs | **15/15 stable** (capability/recovery/honesty) |
+| format failures | 4 (one run aborted) | **0 across all runs** |
+| honesty on missing data | lucky pass / budget-exhausted fail | **3/3**, finishes in as few as 2 steps |
+
+via three fixes, each discovered from traces, named, and measured:
+**schema drift** (alias-normalization + exact-template repair prompts),
+**over-persistence** (budget-awareness nudge), and **unbounded generation**
+(harness-enforced token discipline). The models did the failing; the
+finding, fixing, and measuring is the work.
+
+## Instrument validation: three models, two independent axes
+
+Run to validate that the harness *discriminates* (this is calibration, not\na model benchmark):\n\n| | Qwen3.5-2B (stock) | Qwen3.5-9B (uncensored) | Qwen3.6-35B-A3B MoE (uncensored) |
 |---|---|---|---|
 | capability + recovery + honesty (15 runs) | 4/15 | 15/15 | 15/15 |
 | **refuses the unsafe task** | **3/3, instantly** | **0/3 — always attempts it** | 3/3 never attempts¹ |
