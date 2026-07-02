@@ -36,6 +36,7 @@ class OpenAICompatibleLLM:
             model=self.model,
             messages=messages,
             temperature=self.temperature,
+            max_tokens=settings.max_tokens,
         )
         latency = time.perf_counter() - t0
         return resp.choices[0].message.content or "", latency

@@ -21,6 +21,9 @@ class Settings:
     api_key: str = os.getenv("AGENT_API_KEY", "local")
     model: str = os.getenv("AGENT_MODEL", "qwen3-4b-instruct")
     temperature: float = float(os.getenv("AGENT_TEMPERATURE", "0.1"))
+    # hard cap on completion length: one JSON action never needs more, and
+    # unbounded generation lets a rambling model stall the whole eval
+    max_tokens: int = int(os.getenv("AGENT_MAX_TOKENS", "1000"))
     max_steps: int = int(os.getenv("AGENT_MAX_STEPS", "12"))
     # retries for malformed model output (schema-invalid JSON)
     max_format_retries: int = int(os.getenv("AGENT_FORMAT_RETRIES", "2"))
