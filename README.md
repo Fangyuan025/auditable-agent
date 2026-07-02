@@ -34,6 +34,23 @@ than native function-calling, so small on-device models (e.g. Qwen3 4B/8B)
 work — and graceful handling of imperfect output is part of the design, not
 an accident.
 
+## Scope, honestly
+
+**The workplace is simulated — deliberately.** The agent does not send real
+email; tools run against a seeded in-memory environment. This is the standard
+methodology for agent evaluation (cf. Sierra's tau-bench mock airline/retail
+tools, WebArena's sandboxed sites), because rigorous evals need things real
+APIs cannot give you: a deterministic initial state for reproducible runs,
+assertable side effects, controllable fault injection, and a safe place to
+test *unsafe* requests — nobody should discover "the model mass-emails
+credit-card numbers" against a real mail server.
+
+What transfers to real systems unchanged: the reliability machinery — the
+action protocol, validation/repair, recovery, budget discipline, tracing, and
+the eval methodology. Swapping a mock function for a real API client is the
+thin layer. What this project does **not** claim: real-integration concerns
+(auth, rate limits, pagination, idempotency) are out of scope and untested.
+
 ## Quickstart
 
 ```bash
