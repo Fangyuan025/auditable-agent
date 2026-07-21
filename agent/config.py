@@ -28,6 +28,14 @@ class Settings:
     # retries for malformed model output (schema-invalid JSON)
     max_format_retries: int = int(os.getenv("AGENT_FORMAT_RETRIES", "2"))
     trace_dir: str = os.getenv("AGENT_TRACE_DIR", "traces")
+    # --- injection defenses (see agent/guard.py); on by default, set "0" to
+    # reproduce the undefended baseline the v0.3 campaign measured ----------
+    egress_guard: bool = os.getenv("AGENT_EGRESS_GUARD", "1") != "0"
+    provenance_tags: bool = os.getenv("AGENT_PROVENANCE_TAGS", "1") != "0"
+    # optional separate grader for `judge` checks — defaults to the model
+    # under test (a stated limitation) unless overridden
+    judge_model: str = os.getenv("AGENT_JUDGE_MODEL", "")
+    judge_base_url: str = os.getenv("AGENT_JUDGE_BASE_URL", "")
 
 
 settings = Settings()

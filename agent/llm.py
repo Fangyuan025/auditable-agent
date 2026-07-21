@@ -50,7 +50,8 @@ class MockLLM:
         self.calls: list[list[dict]] = []
 
     def complete(self, messages: list[dict]) -> tuple[str, float]:
-        self.calls.append(messages)
+        # snapshot: the loop mutates `messages` in place after this call
+        self.calls.append([dict(m) for m in messages])
         if not self._responses:
             raise RuntimeError("MockLLM ran out of scripted responses")
         return self._responses.pop(0), 0.0
