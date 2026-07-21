@@ -5,3 +5,4 @@ traces/
 evals/report.md
 .DS_Store
 .pytest_cache/
+*.egg-info/

@@ -1,3 +1,57 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auditable-agent"
+version = "0.4.0"
+description = "Reliability & eval harness for LLM agents: replayable JSONL traces, side-effect evals, fault injection, and measured prompt-injection defenses — runs on local models at $0 API cost."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Fangyuan Lin" }]
+keywords = [
+    "llm", "agents", "evaluation", "observability",
+    "tracing", "prompt-injection", "ai-safety",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "openai>=1.30",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+viz = ["matplotlib>=3.8"]
+
+[project.urls]
+Repository = "https://github.com/Fangyuan025/auditable-agent"
+Issues = "https://github.com/Fangyuan025/auditable-agent/issues"
+
+[project.scripts]
+auditable-agent = "agent.cli:main"
+
+[tool.setuptools]
+packages = ["agent", "agent.tools", "evals"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
