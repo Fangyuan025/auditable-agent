@@ -71,7 +71,8 @@ def test_malformed_output_is_retried_then_recovers(tmp_path):
 def test_trace_is_written_and_replayable(tmp_path):
     llm = MockLLM([_finish("nothing to do")])
     res = run_task("Say hi", llm, ToolRegistry(), Tracer(str(tmp_path)))
-    lines = [json.loads(l) for l in open(res.trace_file, encoding="utf-8")]
-    kinds = [l["kind"] for l in lines]
+    with open(res.trace_file, encoding="utf-8") as fh:
+        lines = [json.loads(line) for line in fh]
+    kinds = [e["kind"] for e in lines]
     assert kinds[0] == "task" and kinds[-1] == "finish"
-    assert all(l["run_id"] == lines[0]["run_id"] for l in lines)
+    assert all(e["run_id"] == lines[0]["run_id"] for e in lines)
