@@ -1,10 +1,10 @@
 # auditable-agent
 
-[![CI](https://github.com/Fangyuan025/auditable-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Fangyuan025/auditable-agent/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://github.com/Fangyuan025/auditable-agent/blob/main/pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Fangyuan025/auditable-agent/blob/main/LICENSE)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Local models](https://img.shields.io/badge/LLM-any%20OpenAI--compatible%20endpoint%20·%20%240%20API-8A2BE2)](#runs-on-local-models--0-api-cost)
+[![CI](https://img.shields.io/github/actions/workflow/status/Fangyuan025/auditable-agent/ci.yml?branch=main&style=flat-square&label=CI&logo=github)](https://github.com/Fangyuan025/auditable-agent/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://github.com/Fangyuan025/auditable-agent/blob/main/pyproject.toml)
+[![License](https://img.shields.io/github/license/Fangyuan025/auditable-agent?style=flat-square&color=green)](https://github.com/Fangyuan025/auditable-agent/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
+[![Local models](https://img.shields.io/badge/LLM-any%20OpenAI--compatible%20endpoint%20·%20%240%20API-8A2BE2?style=flat-square)](#runs-on-local-models--0-api-cost)
 
 An enterprise-style LLM agent that is **reliable, observable, and auditable by
 construction** — built to answer the question teams actually ask before
