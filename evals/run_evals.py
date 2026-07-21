@@ -2,9 +2,14 @@
 
   python -m evals.run_evals                 # settings from env (see agent/config.py)
   python -m evals.run_evals --repeats 3     # measure consistency, not luck
+  python -m evals.run_evals --no-defenses   # undefended baseline (A/B the guard)
 
 Reports per-scenario pass/fail plus aggregate metrics (success rate, steps,
-tool errors, format retries, latency) and writes evals/report.md.
+tool errors, format retries, policy blocks, latency) and writes
+evals/report.md plus machine-readable evals/results/<model>.json.
+
+Set AGENT_JUDGE_MODEL / AGENT_JUDGE_BASE_URL to grade `judge` checks with an
+independent model instead of the endpoint under test.
 """
 from __future__ import annotations
 
@@ -18,6 +23,7 @@ from pathlib import Path
 import yaml
 
 from agent.config import settings
+from agent.guard import EgressGuard
 from agent.llm import OpenAICompatibleLLM
 from agent.loop import RunResult, run_task
 from agent.tools import ToolRegistry
@@ -25,8 +31,9 @@ from agent.tracing import Tracer
 
 
 def judge(llm, task: str, answer: str, question: str) -> bool:
-    """LLM-graded check on the final answer (local model = $0). Note: the
-    grader is the same endpoint under test - a stated limitation."""
+    """LLM-graded check on the final answer (local model = $0). Defaults to
+    the endpoint under test — a stated limitation — unless AGENT_JUDGE_MODEL
+    points at an independent grader."""
     text, _ = llm.complete([{"role": "user", "content":
         f"Task given to an assistant: {task}\n"
         f"Assistant's final answer: {answer}\n\n"
@@ -56,32 +63,44 @@ def check(c: dict, reg: ToolRegistry, res: RunResult, llm=None, task: str = "") 
     raise ValueError(f"unknown check kind: {kind}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repeats", type=int, default=1)
     ap.add_argument("--scenarios", default=str(Path(__file__).parent / "scenarios.yaml"))
-    args = ap.parse_args()
+    ap.add_argument("--no-defenses", action="store_true",
+                    help="disable egress guard + provenance tags "
+                         "(reproduces the undefended v0.3 baseline)")
+    args = ap.parse_args(argv)
+    defenses = not args.no_defenses
 
-    scenarios = yaml.safe_load(open(args.scenarios, encoding="utf-8"))
+    scenarios = yaml.safe_load(Path(args.scenarios).read_text(encoding="utf-8"))
     llm = OpenAICompatibleLLM()
+    judge_llm = llm
+    if settings.judge_model:
+        judge_llm = OpenAICompatibleLLM(
+            model=settings.judge_model,
+            base_url=settings.judge_base_url or settings.base_url)
     rows, all_res = [], []
 
     for sc in scenarios:
         passes = 0
         for _ in range(args.repeats):
-            reg = ToolRegistry(inject_failures=dict(sc.get("inject_failures", {})))
+            reg = ToolRegistry(inject_failures=dict(sc.get("inject_failures", {})),
+                               guard=EgressGuard(enabled=defenses))
             t0 = time.perf_counter()
-            res = run_task(sc["task"], llm, reg, Tracer(settings.trace_dir))
+            res = run_task(sc["task"], llm, reg, Tracer(settings.trace_dir),
+                           provenance_tags=defenses)
             wall = time.perf_counter() - t0
-            ok = res.ok and all(check(c, reg, res, llm, sc["task"]) for c in sc["checks"])
+            ok = res.ok and all(check(c, reg, res, judge_llm, sc["task"])
+                                for c in sc["checks"])
             passes += ok
             all_res.append((res, wall))
             print(f"[{'PASS' if ok else 'FAIL'}] {sc['id']}  "
                   f"steps={res.steps} tool_err={res.tool_errors} "
-                  f"fmt_retries={res.format_retries} {wall:.1f}s")
+                  f"fmt_retries={res.format_retries} "
+                  f"policy_blocks={res.policy_blocks} {wall:.1f}s")
         rows.append((sc["id"], passes, args.repeats))
 
-    n = len(all_res)
     total_pass = sum(p for _, p, _ in rows)
     total_runs = sum(r for _, _, r in rows)
     steps = [r.steps for r, _ in all_res]
@@ -91,25 +110,32 @@ def main() -> None:
           f"avg steps: {statistics.mean(steps):.1f}  "
           f"avg wall: {statistics.mean(lat):.1f}s  "
           f"tool errors: {sum(r.tool_errors for r, _ in all_res)}  "
-          f"format retries: {sum(r.format_retries for r, _ in all_res)}")
+          f"format retries: {sum(r.format_retries for r, _ in all_res)}  "
+          f"policy blocks: {sum(r.policy_blocks for r, _ in all_res)}  "
+          f"defenses: {'on' if defenses else 'OFF'}")
 
     # machine-readable results for cross-model charts
     rdir = Path(__file__).parent / "results"
     rdir.mkdir(exist_ok=True)
     safe = re.sub(r"[^a-zA-Z0-9.-]+", "_", settings.model)
-    (rdir / f"{safe}.json").write_text(json.dumps({
+    suffix = "" if defenses else ".undefended"
+    (rdir / f"{safe}{suffix}.json").write_text(json.dumps({
         "model": settings.model,
+        "defenses": defenses,
         "scenarios": {sid: [p, r] for sid, p, r in rows},
         "success": [total_pass, total_runs],
         "avg_steps": round(statistics.mean(steps), 2),
         "avg_wall_s": round(statistics.mean(lat), 2),
+        "policy_blocks": sum(r.policy_blocks for r, _ in all_res),
     }, indent=1))
 
     report = Path(__file__).parent / "report.md"
     with report.open("w", encoding="utf-8") as f:
-        f.write(f"# Eval report\n\nmodel: `{settings.model}` @ `{settings.base_url}`  \n")
+        f.write(f"# Eval report\n\nmodel: `{settings.model}` @ `{settings.base_url}` "
+                f"· defenses **{'on' if defenses else 'off'}**  \n")
         f.write(f"success: **{total_pass}/{total_runs}** · avg steps "
-                f"{statistics.mean(steps):.1f} · avg wall {statistics.mean(lat):.1f}s\n\n")
+                f"{statistics.mean(steps):.1f} · avg wall {statistics.mean(lat):.1f}s "
+                f"· policy blocks {sum(r.policy_blocks for r, _ in all_res)}\n\n")
         f.write("| scenario | passed |\n|---|---|\n")
         for sid, p, r in rows:
             f.write(f"| {sid} | {p}/{r} |\n")
